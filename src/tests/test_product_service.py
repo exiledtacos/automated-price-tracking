@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, AsyncMock
 from sqlalchemy import text
 from src.infrastructure.repositories.product_repository import ProductRepository
 from src.infrastructure.database import SessionLocal
@@ -34,24 +34,23 @@ def repository(session):
 
 
 @pytest.fixture
-def mock_firecrawl():
-    with patch("services.product_service.FirecrawlApp") as mock:
-        app_instance = Mock()
-        app_instance.scrape_url.return_value = {
-            "extract": {
-                "url": "https://www.amazon.com/dp/B09HMV6K1W",
-                "name": "Test Product",
-                "price": 99.99,
-                "currency": "USD",
-                "main_image_url": "https://example.com/image.jpg",
-            }
-        }
-        mock.return_value = app_instance
+def mock_gemini_scraper():
+    with patch("src.services.product_service.GeminiScraper") as mock:
+        scraper_instance = Mock()
+        scraper_instance.scrape_product = AsyncMock(return_value=ProductCreate(
+            url="https://www.amazon.com/dp/B09HMV6K1W",
+            name="Test Product",
+            price=99.99,
+            currency="USD",
+            main_image_url="https://example.com/image.jpg",
+            check_date="2024-01-01 00:00:00"
+        ))
+        mock.return_value = scraper_instance
         yield mock
 
 
 @pytest.fixture
-def service(repository, mock_firecrawl):
+def service(repository, mock_gemini_scraper):
     return ProductService(repository)
 
 

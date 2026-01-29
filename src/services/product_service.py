@@ -1,16 +1,15 @@
 from typing import Tuple
-from datetime import datetime
 from urllib.parse import urlparse
 
-from firecrawl import FirecrawlApp
 from src.domain.models import ProductCreate, PriceHistoryCreate
 from src.infrastructure.repositories.product_repository import ProductRepository
+from src.services.gemini_scraper import GeminiScraper
 
 
 class ProductService:
     def __init__(self, product_repository: ProductRepository):
         self.repository = product_repository
-        self.firecrawl = FirecrawlApp()
+        self.gemini_scraper = GeminiScraper()
 
     async def add_product(self, url: str) -> Tuple[bool, str]:
         """Add a new product to track"""
@@ -23,8 +22,11 @@ class ProductService:
             if existing_product:
                 return False, "Product already being tracked!"
 
-            # Scrape product
-            scraped_product = await self._scrape_product(url)
+            # Scrape product using Gemini
+            scraped_product = await self.gemini_scraper.scrape_product(url)
+            
+            if not scraped_product:
+                return False, "Failed to scrape product data. Please check the URL."
 
             # Create product
             product = self.repository.add(scraped_product)
@@ -51,20 +53,6 @@ class ProductService:
             return all([result.scheme, result.netloc])
         except ValueError:
             return False
-
-    async def _scrape_product(self, url: str) -> ProductCreate:
-        """Scrape product details"""
-        data = self.firecrawl.scrape_url(
-            url,
-            params={
-                "formats": ["extract"],
-                "extract": {"schema": ProductCreate.model_json_schema()},
-            },
-        )
-        product_data = data["extract"]
-        product_data["url"] = url  # Use original URL
-        product_data["check_date"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        return ProductCreate(**product_data)
 
     def remove_product(self, url: str) -> None:
         """Remove a product and its price history"""
