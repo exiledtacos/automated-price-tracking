@@ -36,7 +36,7 @@ jobs:
 
       - name: Run price checker
         env:
-          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           PRICE_DROP_THRESHOLD: 0.05
           POSTGRES_URL: ${{ secrets.POSTGRES_URL }}

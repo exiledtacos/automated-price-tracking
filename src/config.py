@@ -2,11 +2,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    FIRECRAWL_API_KEY: str
+    GEMINI_API_KEY: str  # Required: Google Gemini API key for scraping
     DISCORD_WEBHOOK_URL: str
     PRICE_DROP_THRESHOLD: float = 0.05  # Minimum price drop percentage
     POSTGRES_URL: str
-    GEMINI_API_KEY: str = ""  # Optional: For gemini_bulk_scraper.py
 
     model_config = SettingsConfigDict(env_file=".env")
 

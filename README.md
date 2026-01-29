@@ -36,8 +36,7 @@ Before you begin, ensure you have:
 - Python 3.10 or higher installed on your system
 - Poetry package manager for dependency management
 - A Discord webhook URL for receiving notifications (instructions below)
-- A Firecrawl API key for reliable web scraping (sign up at firecrawl.com)
-- **NEW**: Optional Google Gemini API key for bulk scraping (alternative to Firecrawl)
+- A Google Gemini API key for web scraping (free tier available at Google AI Studio)
 - PostgreSQL instance created online, preferably with Supabase (optional, SQLite works out of the box)
 - Basic knowledge of command line operations
 
@@ -65,16 +64,13 @@ poetry install
 4. Create a `.env` file in the project root with the following variables:
 
 ```bash
-FIRECRAWL_API_KEY=your_firecrawl_api_key
+GEMINI_API_KEY=your_gemini_api_key
 DISCORD_WEBHOOK_URL=your_discord_webhook_url
 PRICE_DROP_THRESHOLD=0.05  # Change this to control notifications
 POSTGRES_URL=your_postgres_url # Optional, SQLite used by default
-GEMINI_API_KEY=your_gemini_api_key # Optional, for bulk scraping (see below)
 ```
 
-> Note: You can sign up for a free Firecrawl account and get an API key [here](https://firecrawl.dev).
-
-> **NEW**: For bulk scraping with Gemini API, get a free API key at [Google AI Studio](https://makersuite.google.com/app/apikey).
+> Note: Get a free Gemini API key at [Google AI Studio](https://makersuite.google.com/app/apikey). The free tier is generous and perfect for personal use.
 
 The app sends notifications to your private Discord server via a webhook if any of the tracked items' price drops below the `PRICE_DROP_THRESHOLD`. Instructions on how to get a Discord webhook URL are below.
 
@@ -102,20 +98,20 @@ poetry run streamlit run streamlit_app.py
    - Prices are checked automatically every 6 hours via GitHub Actions
    - Manual checks can be triggered from the Actions tab
 
-## Bulk Scraping with Gemini API
+## Bulk Scraping
 
-For faster bulk product scraping, you can use the new Gemini Bulk Scraper:
+For scraping multiple products at once, you can use the Gemini Bulk Scraper:
 
 ```bash
-# Set up Gemini API key in .env first
+# Add product URLs to the script first, then run:
 python -m src.scripts.gemini_bulk_scraper
 ```
 
 **Features:**
-- Concurrent scraping of multiple URLs
-- Uses Google's Gemini API for data extraction
+- Concurrent scraping of multiple URLs for speed
+- Leverages Gemini's ability to directly fetch and parse web pages
 - Automatically saves products and price history to database
-- Free tier available
+- Rate limiting to avoid API throttling
 
 See [Gemini Scraper Documentation](src/scripts/README_GEMINI_SCRAPER.md) for detailed usage instructions and examples.
 
@@ -136,7 +132,7 @@ The app can be deployed to Streamlit Cloud for free:
 2. Sign up for [Streamlit Cloud](https://streamlit.io/cloud)
 3. Create a new app and select your forked repository
 4. Add the following secrets in the app settings:
-   - `FIRECRAWL_API_KEY`
+   - `GEMINI_API_KEY`
    - `DISCORD_WEBHOOK_URL`
    - `PRICE_DROP_THRESHOLD`
    - `POSTGRES_URL` (recommended)
@@ -194,6 +190,6 @@ This project is licensed under the Apache License 2.0 - see the LICENSE file for
 ## Acknowledgments
 
 - Built with [Streamlit](https://streamlit.io/)
-- Price tracking powered by [Firecrawl](https://firecrawl.dev)
+- Web scraping powered by [Google Gemini API](https://ai.google.dev/)
 - Notifications via Discord Webhooks
 - Deployment automation with GitHub Actions

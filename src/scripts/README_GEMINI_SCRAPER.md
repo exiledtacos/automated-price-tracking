@@ -2,11 +2,13 @@
 
 A bulk web scraping tool that uses Google's Gemini API to extract product information from multiple URLs concurrently.
 
-## Why Use This Instead of Firecrawl?
+## Why Gemini?
 
+- **Direct URL Fetching**: Gemini can directly fetch and parse web pages - no need for separate HTTP requests
 - **Bulk Processing**: Scrapes multiple URLs concurrently for faster processing
-- **Free Tier**: Gemini API offers a generous free tier
-- **Alternative**: Provides an alternative to Firecrawl in case of API limits or issues
+- **Free Tier**: Gemini API offers a generous free tier perfect for personal projects
+- **Smart Extraction**: AI-powered extraction understands product page structure automatically
+- **No Extra Dependencies**: No need for additional scraping libraries
 
 ## Setup
 
@@ -116,26 +118,24 @@ Try reducing the number of URLs or simplifying the prompt.
 ### "Failed to fetch URL: HTTP 403"
 
 Some websites block automated scrapers. You may need to:
-- Use a headless browser solution
-- Add user-agent headers
-- Use the Firecrawl API instead
+- Try different product pages from the same site
+- Use simpler product pages instead of JavaScript-heavy single-page applications
+- Note: Gemini fetches pages directly, so traditional anti-bot measures may still work
 
-## Comparison with Firecrawl
+## How It Works
 
-| Feature | Gemini Bulk Scraper | Firecrawl |
-|---------|---------------------|-----------|
-| Speed | Fast (concurrent) | Sequential |
-| Accuracy | Good | Excellent |
-| Cost | Free tier generous | Paid after limit |
-| JavaScript Support | Limited | Full |
-| Anti-bot Handling | Basic | Advanced |
+1. **URL Submission**: You provide product URLs to the scraper
+2. **Direct Fetch**: Gemini API fetches the page content directly (no separate HTTP request needed)
+3. **AI Extraction**: Gemini's AI parses the HTML and extracts structured product data
+4. **Validation**: The scraper validates the extracted data has all required fields
+5. **Storage**: Products and prices are saved to the database with change tracking
 
 ## Example Output
 
 ```
 Starting bulk scrape of 3 products...
 Added new product: Sony WH-1000XM4 Headphones - $348.00
-Product already exists: Apple AirPods Pro
+Price changed for Apple AirPods Pro: $249.00 -> $229.00
 Added new product: Bose QuietComfort 45 - $329.00
 
 Completed! Successfully processed 3/3 products.

@@ -39,6 +39,7 @@ class GeminiBulkScraper:
     async def scrape_url(self, url: str, session: aiohttp.ClientSession) -> Optional[Dict]:
         """
         Scrape a single URL using Gemini API to extract product information.
+        Gemini will fetch the URL directly and extract the data.
         
         Args:
             url: Product URL to scrape
@@ -49,30 +50,13 @@ class GeminiBulkScraper:
         """
         async with self.semaphore:  # Limit concurrent requests
             try:
-                # Fetch the HTML content of the page with proper headers
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-                
-                async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
-                    if response.status != 200:
-                        print(f"Failed to fetch {url}: HTTP {response.status}")
-                        return None
-                    
-                    html_content = await response.text()
-                    # Truncate HTML to avoid token limits (keep first 8000 chars)
-                    html_content = html_content[:8000]
-                
-                # Send the HTML content to Gemini for extraction
+                # Let Gemini fetch and extract product information directly from the URL
                 extraction_prompt = f"""
-                Extract product information from the following HTML content.
+                Visit this product page URL and extract the current product information: {url}
                 
-                HTML:
-                {html_content}
-                
-                Extract:
+                Extract the following information from the page:
                 - Product name/title
-                - Current price (as a number, without currency symbols)
+                - Current price (as a number, without currency symbols like $ or €)
                 - Currency code (e.g., USD, EUR, GBP)
                 - Main product image URL (full URL starting with http/https)
                 
