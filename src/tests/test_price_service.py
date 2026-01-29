@@ -35,46 +35,40 @@ def repository(session):
 
 
 @pytest.fixture
-def mock_firecrawl():
-    with patch("services.price_service.FirecrawlApp") as mock:
-        app_instance = Mock()
+def mock_gemini_scraper():
+    with patch("src.services.price_service.GeminiScraper") as mock:
+        scraper_instance = Mock()
 
-        # Create a mock coroutine for price drop test
+        # Mock return value for price drop scenario
         async def mock_scrape_drop(*args, **kwargs):
             return {
-                "extract": {
-                    "url": "https://www.amazon.com/dp/B09HMV6K1W",
-                    "name": "Test Product",
-                    "price": 79.99,  # Lower price to trigger alert
-                    "currency": "USD",
-                    "main_image_url": "https://example.com/image.jpg",
-                }
+                "name": "Test Product",
+                "price": 79.99,  # Lower price to trigger alert
+                "currency": "USD",
+                "main_image_url": "https://example.com/image.jpg",
             }
 
-        # Create a mock coroutine for no price drop test
+        # Mock return value for no price drop scenario
         async def mock_scrape_no_drop(*args, **kwargs):
             return {
-                "extract": {
-                    "url": "https://www.amazon.com/dp/B09HMV6K1W",
-                    "name": "Test Product",
-                    "price": 99.99,  # Same price as initial
-                    "currency": "USD",
-                    "main_image_url": "https://example.com/image.jpg",
-                }
+                "name": "Test Product",
+                "price": 99.99,  # Same price as initial
+                "currency": "USD",
+                "main_image_url": "https://example.com/image.jpg",
             }
 
-        app_instance.scrape_url = mock_scrape_drop  # Default to price drop scenario
-        mock.return_value = app_instance
+        scraper_instance.scrape_url = mock_scrape_drop  # Default to price drop scenario
+        mock.return_value = scraper_instance
 
         def switch_to_no_drop():
-            app_instance.scrape_url = mock_scrape_no_drop
+            scraper_instance.scrape_url = mock_scrape_no_drop
 
         mock.switch_to_no_drop = switch_to_no_drop
         yield mock
 
 
 @pytest.fixture
-def service(repository, mock_firecrawl):
+def service(repository, mock_gemini_scraper):
     return PriceService(repository)
 
 
