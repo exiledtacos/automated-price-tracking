@@ -6,7 +6,7 @@ multiple product URLs and stores them in the database.
 import asyncio
 import os
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import aiohttp
 import json
 
@@ -18,12 +18,13 @@ from src.infrastructure.repositories.product_repository import ProductRepository
 class GeminiBulkScraper:
     """Bulk scraper using Google Gemini API for extracting product data"""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, max_concurrent: int = 5):
         """
         Initialize the Gemini bulk scraper.
         
         Args:
             api_key: Google Gemini API key. If not provided, reads from GEMINI_API_KEY env var
+            max_concurrent: Maximum number of concurrent requests (default: 5)
         """
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
@@ -32,37 +33,28 @@ class GeminiBulkScraper:
             )
         
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+        self.max_concurrent = max_concurrent
+        self.semaphore = asyncio.Semaphore(max_concurrent)
         
-    async def scrape_url(self, url: str) -> Optional[Dict]:
+    async def scrape_url(self, url: str, session: aiohttp.ClientSession) -> Optional[Dict]:
         """
         Scrape a single URL using Gemini API to extract product information.
         
         Args:
             url: Product URL to scrape
+            session: Shared aiohttp session for making requests
             
         Returns:
             Dictionary with product data or None if scraping fails
         """
-        prompt = f"""
-        Extract product information from the following product page URL: {url}
-        
-        You need to visit this URL and extract the following information:
-        - Product name/title
-        - Current price (as a number, without currency symbols)
-        - Currency code (e.g., USD, EUR, GBP)
-        - Main product image URL
-        
-        Return ONLY a JSON object with these exact keys: name, price, currency, main_image_url
-        Do not include any explanations, just the JSON object.
-        
-        Example format:
-        {{"name": "Product Name", "price": 99.99, "currency": "USD", "main_image_url": "https://example.com/image.jpg"}}
-        """
-        
-        try:
-            async with aiohttp.ClientSession() as session:
-                # First, fetch the HTML content of the page
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+        async with self.semaphore:  # Limit concurrent requests
+            try:
+                # Fetch the HTML content of the page with proper headers
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+                
+                async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
                     if response.status != 200:
                         print(f"Failed to fetch {url}: HTTP {response.status}")
                         return None
@@ -71,7 +63,7 @@ class GeminiBulkScraper:
                     # Truncate HTML to avoid token limits (keep first 8000 chars)
                     html_content = html_content[:8000]
                 
-                # Now send the HTML content to Gemini for extraction
+                # Send the HTML content to Gemini for extraction
                 extraction_prompt = f"""
                 Extract product information from the following HTML content.
                 
@@ -91,7 +83,7 @@ class GeminiBulkScraper:
                 {{"name": "Product Name", "price": 99.99, "currency": "USD", "main_image_url": "https://example.com/image.jpg"}}
                 """
                 
-                # Call Gemini API
+                # Call Gemini API (API key in URL is standard for this API)
                 gemini_url = f"{self.base_url}?key={self.api_key}"
                 payload = {
                     "contents": [{
@@ -113,11 +105,18 @@ class GeminiBulkScraper:
                     
                     result = await gemini_response.json()
                     
-                    # Extract the generated text
-                    if "candidates" in result and len(result["candidates"]) > 0:
-                        text = result["candidates"][0]["content"]["parts"][0]["text"]
+                    # Safely extract the generated text
+                    try:
+                        candidates = result.get("candidates", [])
+                        if not candidates:
+                            print(f"No candidates in Gemini response for {url}")
+                            return None
                         
-                        # Try to parse JSON from the response
+                        text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        if not text:
+                            print(f"Empty text in Gemini response for {url}")
+                            return None
+                        
                         # Remove markdown code blocks if present
                         text = text.strip()
                         if text.startswith("```json"):
@@ -137,20 +136,21 @@ class GeminiBulkScraper:
                         else:
                             print(f"Missing required fields in response for {url}")
                             return None
-                    else:
-                        print(f"No candidates in Gemini response for {url}")
+                            
+                    except (KeyError, IndexError, AttributeError) as e:
+                        print(f"Error parsing Gemini response structure for {url}: {e}")
                         return None
-                        
-        except json.JSONDecodeError as e:
-            print(f"Failed to parse JSON response for {url}: {e}")
-            return None
-        except Exception as e:
-            print(f"Error scraping {url}: {e}")
-            return None
+                            
+            except json.JSONDecodeError as e:
+                print(f"Failed to parse JSON response for {url}: {e}")
+                return None
+            except Exception as e:
+                print(f"Error scraping {url}: {e}")
+                return None
     
     async def scrape_bulk(self, urls: List[str]) -> List[ProductCreate]:
         """
-        Scrape multiple URLs concurrently.
+        Scrape multiple URLs concurrently using a shared session.
         
         Args:
             urls: List of product URLs to scrape
@@ -158,8 +158,9 @@ class GeminiBulkScraper:
         Returns:
             List of ProductCreate objects with scraped data
         """
-        tasks = [self.scrape_url(url) for url in urls]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        async with aiohttp.ClientSession() as session:
+            tasks = [self.scrape_url(url, session) for url in urls]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
         
         products = []
         for url, result in zip(urls, results):
@@ -176,7 +177,7 @@ class GeminiBulkScraper:
                         price=float(result["price"]),
                         currency=result["currency"],
                         main_image_url=result["main_image_url"],
-                        check_date=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                        check_date=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                     )
                     products.append(product)
                 except Exception as e:
@@ -207,20 +208,25 @@ class GeminiBulkScraper:
                     # Check if product already exists
                     existing = repository.get(product.url)
                     if existing:
-                        print(f"Product already exists: {product.name}")
-                        # Update price history
-                        price_history = PriceHistoryCreate(
-                            product_url=product.url,
-                            price=product.price,
-                            product_name=product.name
-                        )
-                        repository.add_price_history(price_history)
-                        
-                        # Update product price
-                        existing.price = product.price
-                        existing.check_date = product.check_date
-                        repository.update(existing)
-                        saved_count += 1
+                        # Only update if price has changed
+                        if existing.price != product.price:
+                            print(f"Price changed for {product.name}: ${existing.price:.2f} -> ${product.price:.2f}")
+                            
+                            # Add price history entry
+                            price_history = PriceHistoryCreate(
+                                product_url=product.url,
+                                price=product.price,
+                                product_name=product.name
+                            )
+                            repository.add_price_history(price_history)
+                            
+                            # Update product price
+                            existing.price = product.price
+                            existing.check_date = product.check_date
+                            repository.update(existing)
+                            saved_count += 1
+                        else:
+                            print(f"Product price unchanged: {product.name} (${product.price:.2f})")
                     else:
                         # Add new product
                         saved_product = repository.add(product)

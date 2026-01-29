@@ -97,7 +97,7 @@ async def main():
     # await example_bulk_scrape()
     # await example_scrape_and_save()
     
-    print("\n✓ Examples completed!")
+    print("\n⚠ No examples are currently enabled.")
     print("\nTo run these examples:")
     print("1. Uncomment the example function calls in main()")
     print("2. Replace example URLs with real product URLs")
