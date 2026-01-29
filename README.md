@@ -37,6 +37,7 @@ Before you begin, ensure you have:
 - Poetry package manager for dependency management
 - A Discord webhook URL for receiving notifications (instructions below)
 - A Firecrawl API key for reliable web scraping (sign up at firecrawl.com)
+- **NEW**: Optional Google Gemini API key for bulk scraping (alternative to Firecrawl)
 - PostgreSQL instance created online, preferably with Supabase (optional, SQLite works out of the box)
 - Basic knowledge of command line operations
 
@@ -68,9 +69,12 @@ FIRECRAWL_API_KEY=your_firecrawl_api_key
 DISCORD_WEBHOOK_URL=your_discord_webhook_url
 PRICE_DROP_THRESHOLD=0.05  # Change this to control notifications
 POSTGRES_URL=your_postgres_url # Optional, SQLite used by default
+GEMINI_API_KEY=your_gemini_api_key # Optional, for bulk scraping (see below)
 ```
 
 > Note: You can sign up for a free Firecrawl account and get an API key [here](https://firecrawl.dev).
+
+> **NEW**: For bulk scraping with Gemini API, get a free API key at [Google AI Studio](https://makersuite.google.com/app/apikey).
 
 The app sends notifications to your private Discord server via a webhook if any of the tracked items' price drops below the `PRICE_DROP_THRESHOLD`. Instructions on how to get a Discord webhook URL are below.
 
@@ -97,6 +101,23 @@ poetry run streamlit run streamlit_app.py
 4. Automated price checking:
    - Prices are checked automatically every 6 hours via GitHub Actions
    - Manual checks can be triggered from the Actions tab
+
+## Bulk Scraping with Gemini API
+
+For faster bulk product scraping, you can use the new Gemini Bulk Scraper:
+
+```bash
+# Set up Gemini API key in .env first
+python -m src.scripts.gemini_bulk_scraper
+```
+
+**Features:**
+- Concurrent scraping of multiple URLs
+- Uses Google's Gemini API for data extraction
+- Automatically saves products and price history to database
+- Free tier available
+
+See [Gemini Scraper Documentation](src/scripts/README_GEMINI_SCRAPER.md) for detailed usage instructions and examples.
 
 ## Discord Webhook Setup
 
