@@ -32,7 +32,7 @@ class GeminiBulkScraper:
                 "GEMINI_API_KEY not found. Please set it in environment or pass it to constructor."
             )
         
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
         self.max_concurrent = max_concurrent
         self.semaphore = asyncio.Semaphore(max_concurrent)
         
