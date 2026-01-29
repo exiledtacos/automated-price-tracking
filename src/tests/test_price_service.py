@@ -102,7 +102,7 @@ async def test_check_prices_with_price_drop(service, repository):
     repository.add_price_history(price_history)
 
     # Mock the send_price_alert function
-    with patch("services.price_service.send_price_alert") as mock_alert:
+    with patch("src.services.price_service.send_price_alert") as mock_alert:
         mock_alert.return_value = None  # Mock the coroutine return
         updated_products = await service.check_prices()
 
@@ -113,17 +113,17 @@ async def test_check_prices_with_price_drop(service, repository):
             "Test Product", 99.99, 79.99, "https://www.amazon.com/dp/B09HMV6K1W"
         )
 
-        # Verify new price history was added
+        # Verify new price history was added (only when price changes)
         histories = repository.get_price_history(test_product.url)
         assert len(histories) == 2
         assert histories[-1].price == 79.99
 
 
 @pytest.mark.asyncio
-async def test_check_prices_no_price_drop(service, repository, mock_firecrawl):
+async def test_check_prices_no_price_drop(service, repository, mock_gemini_scraper):
     """Test checking prices without a price drop"""
     # Switch to no price drop scenario
-    mock_firecrawl.switch_to_no_drop()
+    mock_gemini_scraper.switch_to_no_drop()
 
     # Add a test product
     test_product = Product(
@@ -145,14 +145,14 @@ async def test_check_prices_no_price_drop(service, repository, mock_firecrawl):
     repository.add_price_history(price_history)
 
     # Mock the send_price_alert function
-    with patch("services.price_service.send_price_alert") as mock_alert:
+    with patch("src.services.price_service.send_price_alert") as mock_alert:
         updated_products = await service.check_prices()
 
         # Verify results
         assert len(updated_products) == 1
         assert not mock_alert.called
 
-        # Verify new price history was added
+        # Verify NO new price history was added (price unchanged)
         histories = repository.get_price_history(test_product.url)
-        assert len(histories) == 2
-        assert histories[-1].price == 99.99
+        assert len(histories) == 1  # Only initial price history
+        assert histories[0].price == 99.99
